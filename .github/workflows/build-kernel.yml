@@ -54,7 +54,7 @@ jobs:
           LLVM_IAS: "1"
         run: |
           cd kernel
-          make $ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
+          make ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
                LLVM=$LLVM LLVM_IAS=$LLVM_IAS gale_defconfig
 
       - name: Build kernel + dtbs
@@ -65,7 +65,7 @@ jobs:
           LLVM_IAS: "1"
         run: |
           cd kernel
-          make -j$(nproc) $ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
+          make -j$(nproc) ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
                LLVM=$LLVM LLVM_IAS=$LLVM_IAS
 
       - name: Gather artifacts

@@ -57,16 +57,13 @@ jobs:
           # CONFIG_IKHEADERS builds kernel/kheaders_data.tar.xz via a host
           # "tiny cpio" that is not needed for a flashable boot.img, drop it.
           sed -i '/^CONFIG_IKHEADERS=y/d' arch/arm64/configs/gale_defconfig
-          # EXPERIMENT (noLTO): the ThinLTO + clang-18 build of this old MTK
-          # 4.19 kernel hard-hangs ~15min into gaming+charging (WDT reset).
-          # Suspect: LTO codegen. Disable ThinLTO entirely.
-          sed -i '/^CONFIG_LTO=y/d' arch/arm64/configs/gale_defconfig
-          sed -i '/^# CONFIG_LTO_NONE is not set/d' arch/arm64/configs/gale_defconfig
-          sed -i 's/^CONFIG_LTO_CLANG=y/# CONFIG_LTO_CLANG is not set/' arch/arm64/configs/gale_defconfig
-          sed -i 's/^CONFIG_THINLTO=y/# CONFIG_THINLTO is not set/' arch/arm64/configs/gale_defconfig
-          # Enable softlockup + hung-task detectors with panic (diagnosis if
-          # the hang persists: a panic leaves a backtrace in ramoops).
-          printf '\nCONFIG_LTO_NONE=y\nCONFIG_SOFTLOCKUP_DETECTOR=y\nCONFIG_BOOTPARAM_SOFTLOCKUP_PANIC=y\nCONFIG_DETECT_HUNG_TASK=y\nCONFIG_BOOTPARAM_HUNG_TASK_PANIC=y\n' >> arch/arm64/configs/gale_defconfig
+          # EXPERIMENT (noLTO) FAILED: non-LTO build of this MTK 4.19 tree
+          # oopses at boot in cpuhvfs_pvt_tbl_create (write to read-only PVT
+          # table), so ThinLTO must be kept. New hypothesis: the ~15min
+          # gaming+charging hang (WDT reset) is NOT LTO codegen. Add
+          # softlockup + hung-task detectors with panic instead: if the hang
+          # recurs, a panic leaves a backtrace in ramoops for diagnosis.
+          printf '\nCONFIG_SOFTLOCKUP_DETECTOR=y\nCONFIG_BOOTPARAM_SOFTLOCKUP_PANIC=y\nCONFIG_DETECT_HUNG_TASK=y\nCONFIG_BOOTPARAM_HUNG_TASK_PANIC=y\nCONFIG_PANIC_TIMEOUT=10\n' >> arch/arm64/configs/gale_defconfig
           # Build OUT-OF-TREE (O=out): in-tree builds (KBUILD_SRC empty) do NOT
           # add -I$(srctree)/$(src) to c_flags (scripts/Makefile.lib), so MTK
           # sources that use `#include <local-header.h>` in the same dir fail

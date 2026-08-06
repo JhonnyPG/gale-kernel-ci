@@ -1,0 +1,71 @@
+name: Debug includes
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dbg:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout CI repo (patches)
+        uses: actions/checkout@v4
+        with:
+          path: ci
+
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+        with:
+          repository: Mayuri-Chan/android_kernel_xiaomi_gale
+          ref: cip
+          path: kernel
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang lld llvm binutils-aarch64-linux-gnu \
+            make python3 bison flex libssl-dev \
+            libncurses-dev zstd cpio unzip
+
+      - name: Apply patches
+        run: |
+          cd kernel
+          shopt -s nullglob
+          for p in ../ci/patches/*.patch; do
+            echo "::group::Applying ${p}"
+            git apply --verbose "$p" || echo "ignored: $p"
+            echo "::endgroup::"
+          done
+
+      - name: Configure
+        env:
+          ARCH: arm64
+          CC: clang
+          LLVM: "1"
+          LLVM_IAS: "1"
+        run: |
+          cd kernel
+          make ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
+               LLVM=$LLVM LLVM_IAS=$LLVM_IAS gale_defconfig
+
+      - name: Compile helio-dvfsrc-ipi.o (V=1)
+        env:
+          ARCH: arm64
+          CC: clang
+          LLVM: "1"
+          LLVM_IAS: "1"
+        run: |
+          cd kernel
+          make ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
+               LLVM=$LLVM LLVM_IAS=$LLVM_IAS V=1 drivers/devfreq/helio-dvfsrc-ipi.o 2>&1 | tail -60 || true
+
+      - name: Compile mtk_trace.o (V=1)
+        env:
+          ARCH: arm64
+          CC: clang
+          LLVM: "1"
+          LLVM_IAS: "1"
+        run: |
+          cd kernel
+          make ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
+               LLVM=$LLVM LLVM_IAS=$LLVM_IAS V=1 kernel/trace/mtk_trace.o 2>&1 | tail -60 || true

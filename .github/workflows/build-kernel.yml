@@ -54,6 +54,11 @@ jobs:
           LLVM_IAS: "1"
         run: |
           cd kernel
+          # CONFIG_IKHEADERS builds kernel/kheaders_data.tar.xz via a host
+          # "tiny cpio" that is not built for in-tree builds (gen_kheaders.sh
+          # uses $KBUILD_SRC/tools/build/cpio -> not found -> Error 127).
+          # Not needed for a flashable boot.img, so drop it from the defconfig.
+          sed -i '/^CONFIG_IKHEADERS=y/d' arch/arm64/configs/gale_defconfig
           make ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
                LLVM=$LLVM LLVM_IAS=$LLVM_IAS gale_defconfig
 

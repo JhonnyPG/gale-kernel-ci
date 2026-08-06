@@ -60,3 +60,15 @@ index 000000000..da0c76c8c
 +extern bool mt_boot_finish(void);
 +#endif
 +#endif/* CONFIG_TRACING && CONFIG_MTK_FTRACER */
+diff --git a/kernel/trace/mtk_ftrace.h b/kernel/trace/mtk_ftrace.h
+index 3c3fe3877..da0c76c8c 100644
+--- a/kernel/trace/mtk_ftrace.h
++++ b/kernel/trace/mtk_ftrace.h
+@@ -36,7 +36,6 @@ TRACE_EVENT(tracing_on,
+ 
+ #undef TRACE_INCLUDE_PATH
+ #undef TRACE_INCLUDE_FILE
+-#define TRACE_INCLUDE_PATH .
+ #define TRACE_INCLUDE_FILE mtk_ftrace
+ 
+ /* This part must be outside protection */

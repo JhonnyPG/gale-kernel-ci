@@ -55,11 +55,13 @@ jobs:
         run: |
           cd kernel
           # CONFIG_IKHEADERS builds kernel/kheaders_data.tar.xz via a host
-          # "tiny cpio" that is not built for in-tree builds (gen_kheaders.sh
-          # uses $KBUILD_SRC/tools/build/cpio -> not found -> Error 127).
-          # Not needed for a flashable boot.img, so drop it from the defconfig.
+          # "tiny cpio" that is not needed for a flashable boot.img, drop it.
           sed -i '/^CONFIG_IKHEADERS=y/d' arch/arm64/configs/gale_defconfig
-          make ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
+          # Build OUT-OF-TREE (O=out): in-tree builds (KBUILD_SRC empty) do NOT
+          # add -I$(srctree)/$(src) to c_flags (scripts/Makefile.lib), so MTK
+          # sources that use `#include <local-header.h>` in the same dir fail
+          # with "file not found". O=out sets KBUILD_SRC and enables that -I.
+          make O=out ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
                LLVM=$LLVM LLVM_IAS=$LLVM_IAS gale_defconfig
 
       - name: Build kernel + dtbs
@@ -70,15 +72,15 @@ jobs:
           LLVM_IAS: "1"
         run: |
           cd kernel
-          make -j$(nproc) ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
+          make O=out -j$(nproc) ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
                LLVM=$LLVM LLVM_IAS=$LLVM_IAS
 
       - name: Gather artifacts
         run: |
           mkdir -p artifact
-          cp -av ${GITHUB_WORKSPACE}/kernel/arch/arm64/boot/Image.gz artifact/ 2>/dev/null || true
-          cp -av ${GITHUB_WORKSPACE}/kernel/arch/arm64/boot/Image   artifact/ 2>/dev/null || true
-          cp -av ${GITHUB_WORKSPACE}/kernel/arch/arm64/boot/dts/mediatek/*.dtb artifact/ 2>/dev/null || true
+          cp -av ${GITHUB_WORKSPACE}/kernel/out/arch/arm64/boot/Image.gz artifact/ 2>/dev/null || true
+          cp -av ${GITHUB_WORKSPACE}/kernel/out/arch/arm64/boot/Image   artifact/ 2>/dev/null || true
+          cp -av ${GITHUB_WORKSPACE}/kernel/out/arch/arm64/boot/dts/mediatek/*.dtb artifact/ 2>/dev/null || true
           cp -av ${GITHUB_WORKSPACE}/ci/scripts/package-boot-local.sh artifact/ 2>/dev/null || true
           echo "--- produced files ---"
           ls -lah ${GITHUB_WORKSPACE}/artifact

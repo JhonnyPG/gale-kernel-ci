@@ -1,4 +1,4 @@
-name: Debug includes
+﻿name: Debug includes
 
 on:
   workflow_dispatch:
@@ -37,7 +37,7 @@ jobs:
             echo "::endgroup::"
           done
 
-      - name: Configure
+      - name: Configure (O=out)
         env:
           ARCH: arm64
           CC: clang
@@ -45,10 +45,10 @@ jobs:
           LLVM_IAS: "1"
         run: |
           cd kernel
-          make ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
+          make O=out ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
                LLVM=$LLVM LLVM_IAS=$LLVM_IAS gale_defconfig
 
-      - name: Compile helio-dvfsrc-ipi.o (V=1)
+      - name: Compile helio-dvfsrc-ipi.o (V=1, O=out)
         env:
           ARCH: arm64
           CC: clang
@@ -56,10 +56,10 @@ jobs:
           LLVM_IAS: "1"
         run: |
           cd kernel
-          make ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
-               LLVM=$LLVM LLVM_IAS=$LLVM_IAS V=1 drivers/devfreq/helio-dvfsrc-ipi.o 2>&1 | tail -60 || true
+          make O=out ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
+               LLVM=$LLVM LLVM_IAS=$LLVM_IAS V=1 drivers/devfreq/helio-dvfsrc-ipi.o 2>&1 | tail -40 || true
 
-      - name: Compile mtk_trace.o (V=1)
+      - name: Compile mtk_trace.o (V=1, O=out)
         env:
           ARCH: arm64
           CC: clang
@@ -67,5 +67,5 @@ jobs:
           LLVM_IAS: "1"
         run: |
           cd kernel
-          make ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
-               LLVM=$LLVM LLVM_IAS=$LLVM_IAS V=1 kernel/trace/mtk_trace.o 2>&1 | tail -60 || true
+          make O=out ARCH=$ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
+               LLVM=$LLVM LLVM_IAS=$LLVM_IAS V=1 kernel/trace/mtk_trace.o 2>&1 | tail -40 || true

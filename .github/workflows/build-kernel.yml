@@ -1,0 +1,86 @@
+name: Build Mayuri Kernel (gale)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Rama del kernel a compilar (stable / cip / dev/cip / ...)
+        required: false
+        default: cip
+        type: string
+  push:
+    branches: [main, master]
+    paths: ["patches/**", ".github/workflows/**"]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout CI repo (patches + scripts)
+        uses: actions/checkout@v4
+        with:
+          path: ci
+
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+        with:
+          repository: Mayuri-Chan/android_kernel_xiaomi_gale
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || 'cip' }}
+          path: kernel
+
+      - name: Install kernel build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang lld llvm binutils-aarch64-linux-gnu \
+            make python3 bison flex libssl-dev \
+            libncurses-dev zstd cpio unzip
+
+      - name: Apply custom patches (if any)
+        run: |
+          cd kernel
+          shopt -s nullglob
+          for p in ../ci/patches/*.patch; do
+            echo "::group::Applying ${p}"
+            git apply --verbose "$p" || echo "ignored: $p"
+            echo "::endgroup::"
+          done
+
+      - name: Configure
+        env:
+          ARCH: arm64
+          CC: clang
+          LLVM: "1"
+          LLVM_IAS: "1"
+        run: |
+          cd kernel
+          make $ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
+               LLVM=$LLVM LLVM_IAS=$LLVM_IAS gale_defconfig
+
+      - name: Build kernel + dtbs
+        env:
+          ARCH: arm64
+          CC: clang
+          LLVM: "1"
+          LLVM_IAS: "1"
+        run: |
+          cd kernel
+          make -j$(nproc) $ARCH CC=$CC CROSS_COMPILE=aarch64-linux-gnu- \
+               LLVM=$LLVM LLVM_IAS=$LLVM_IAS
+
+      - name: Gather artifacts
+        run: |
+          mkdir -p artifact
+          cp -av ${GITHUB_WORKSPACE}/kernel/arch/arm64/boot/Image.gz artifact/ 2>/dev/null || true
+          cp -av ${GITHUB_WORKSPACE}/kernel/arch/arm64/boot/Image   artifact/ 2>/dev/null || true
+          cp -av ${GITHUB_WORKSPACE}/kernel/arch/arm64/boot/dts/mediatek/*.dtb artifact/ 2>/dev/null || true
+          cp -av ${GITHUB_WORKSPACE}/ci/scripts/package-boot-local.sh artifact/ 2>/dev/null || true
+          echo "--- produced files ---"
+          ls -lah ${GITHUB_WORKSPACE}/artifact
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gale-kernel
+          path: artifact/
+          retention-days: 30
